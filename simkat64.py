@@ -1,5 +1,6 @@
 import stimela
 INPUT = "input"                 # Input folder of pipeline. All inputs should be placed here, e.g, sky models
+
 #### 
 #The options below can be changed on the command line via the "-g" option.
 #Example: stimela run simkat64.py -g PREFIX=blah-blah -g DIRECTION=J2000,0deg,-30deg  
@@ -74,18 +75,24 @@ if DIRTY_IMAGE:
     # Make dirty image of sky
     recipe.add("cab/wsclean", "make_dirty_image",
         {
-            "msname"    : MS,
-            "column"    : "DATA",
-            "size"      : 6000,
-            "trim"      : 4096,
-            "scale"     : 1,
-            "niter"     : 0,
-            "name"      : PREFIX,
-            "no-dirty"  : True,
+            "msname"            : MS,
+            "name"              : PREFIX,
+            "column"            : "DATA",
+            "weight"            : "briggs -1.5",
+            "size"              : 10000,
+            "trim"              : 8192,
+            "scale"             : 1.3,
+            "niter"             : 1000000,
+            "pol"               : "I",
+            "mgain"             : 0.9,
+            "auto-mask"         : 10,
+            "auto-threshold"    : 0.5,
+            "channelsout"       : 5,
+            "fit-spectral-pol"  : 4,
+            "joinchannels"      : True,
         },
         input=INPUT,
         output=OUTPUT,
         label="Make dirty image")
 
 recipe.run()
-    
