@@ -14,26 +14,38 @@ MODE = "test"                   # channelization mode. Options are 4k, 32k and t
 SYNTHESIS = "0.5"               # Observation time in hours
 DTIME = "4"                     # Integration time in seconds
 SKYMODEL = "point"              # Sky model name. The sky model file must placed in the input folder. "point" uses a point a 1Jy source at the phase/pointing centre (DIRECTION)
+CALFIELD = "yes"
 
 stimela.register_globals()
 
 GJONES = GJONES.lower() in "yebo yes true 1".split()
 MAKEMS = MAKEMS.lower() in "yebo yes true 1".split()
 SIMSKY = SIMSKY.lower() in "yebo yes true 1".split()
+CALFIELD = CALFIELD.lower() in "yebo yes true 1".split()
 DIRTY_IMAGE = DIRTY_IMAGE.lower() in "yebo yes true 1".split()
 MSDIR = PREFIX + "-msdir"
 OUTPUT = PREFIX + "-output"
 MS = PREFIX + ".ms"
 
+SYNTHESIS = float(SYNTHESIS)
+
 if SKYMODEL == "point":
     DIRECTION = "J2000,0deg,-30deg"
     SKYMODEL = "point.txt"
 
+SCANS = None
+
+if CALFIELD:
+    DIRECTION = [DIRECTION, "J2000,90deg,-45deg"]
+    SKYMODEL = [SKYMODEL, "calfield.txt"]
+    SCANS = [SYNTHESIS*0.85, SYNTHESIS*0.15]
+
+
 BW = 856e6 # in Hz
 mode = {
-    "4k"    : dict(dfreq=BW/4096.0, nchan=4096),
-    "32k"   : dict(dfreq=BW/32768.0, nchan=32768),
-    "test"  : dict(dfreq=2e6, nchan=5),
+    "4k"    : dict(dfreq=BW/4096.0, nchan=4096, im_nchan=16),
+    "32k"   : dict(dfreq=BW/32768.0, nchan=32768, im_nchan=16),
+    "test"  : dict(dfreq=2e6, nchan=8, im_nchan=4),
 }
 
 recipe = stimela.Recipe("Simulate MeerKAT 64 {0:s}".format(PREFIX), ms_dir=MSDIR)
@@ -50,49 +62,53 @@ if MAKEMS:
             "nchan"         : mode[MODE]["nchan"],
             "synthesis"     : float(SYNTHESIS),
             "dtime"         : int(DTIME),
+            "scan-length"   : SCANS or SYNTHESIS,
         },
         input=INPUT,
         output=OUTPUT,
         label="Make empty MS")
 
-if SIMSKY:  
+for field,skymodel in enumerate(SKYMODEL):
+    if SIMSKY:  
     # Simulate sky into MS
-    recipe.add("cab/simulator", "simsky", 
-        {
-            "msname"    : MS,
-            "column"    : "DATA",
-            "addnoise"  : True,
-            "sefd"      : 453,
-            "skymodel"  : SKYMODEL,
-            "Gjones"    : GJONES,
-            "smearing"  : True,
-        },
-        input=INPUT,
-        output=OUTPUT,
-        label="Simulate sky into MS")
+        recipe.add("cab/simulator", "simsky", 
+            {
+                "msname"    : MS,
+                "field-id"  : field,
+                "column"    : "DATA",
+                "addnoise"  : True,
+                "sefd"      : 453,
+                "skymodel"  : skymodel,
+                "Gjones"    : GJONES,
+                "smearing"  : True,
+            },
+            input=INPUT,
+            output=OUTPUT,
+            label="Simulate sky into MS")
 
-if DIRTY_IMAGE:
-    # Make dirty image of sky
-    recipe.add("cab/wsclean", "make_dirty_image",
-        {
-            "msname"            : MS,
-            "name"              : PREFIX,
-            "column"            : "DATA",
-            "weight"            : "briggs -1.5",
-            "size"              : 10000,
-            "trim"              : 8192,
-            "scale"             : 1.3,
-            "niter"             : 1000000,
-            "pol"               : "I",
-            "mgain"             : 0.9,
-            "auto-mask"         : 10,
-            "auto-threshold"    : 0.5,
-            "channelsout"       : 5,
-            "fit-spectral-pol"  : 4,
-            "joinchannels"      : True,
-        },
-        input=INPUT,
-        output=OUTPUT,
-        label="Make dirty image")
+    if DIRTY_IMAGE:
+        # Make dirty image of sky
+        recipe.add("cab/wsclean", "make_dirty_image",
+            {
+                "msname"            : MS,
+                "field"             : field,
+                "name"              : "{0:s}-FLD_{1:d}".format(PREFIX, field),
+                "column"            : "DATA",
+                "weight"            : "briggs -1.5",
+                "size"              : 10000,
+                "trim"              : 8192,
+                "scale"             : 1.3,
+                "niter"             : 1000000,
+                "pol"               : "I",
+                "mgain"             : 0.9,
+                "auto-mask"         : 20,
+                "auto-threshold"    : 0.5,
+                "channelsout"       : mode[MODE]["im_nchan"],
+                "fit-spectral-pol"  : 4,
+                "joinchannels"      : True,
+            },
+            input=INPUT,
+            output=OUTPUT,
+            label="Make dirty image")
 
 recipe.run()
