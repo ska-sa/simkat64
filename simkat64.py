@@ -14,7 +14,7 @@ MODE = "test"                   # channelization mode. Options are 4k, 32k and t
 SYNTHESIS = "0.5"               # Observation time in hours
 DTIME = "4"                     # Integration time in seconds
 SKYMODEL = "point"              # Sky model name. The sky model file must placed in the input folder. "point" uses a point a 1Jy source at the phase/pointing centre (DIRECTION)
-CALFIELD = "yes"
+CALFIELD = "no"
 
 stimela.register_globals()
 
@@ -39,6 +39,9 @@ if CALFIELD:
     DIRECTION = [DIRECTION, "J2000,90deg,-45deg"]
     SKYMODEL = [SKYMODEL, "calfield.txt"]
     SCANS = [SYNTHESIS*0.85, SYNTHESIS*0.15]
+else:
+    SKYMODEL = [SKYMODEL]
+
 
 
 BW = 856e6 # in Hz
@@ -81,6 +84,9 @@ for field,skymodel in enumerate(SKYMODEL):
                 "skymodel"  : skymodel,
                 "Gjones"    : GJONES,
                 "smearing"  : True,
+                "tdlconf"   : "tdlconf.profiles",
+                "section"   : "sim",
+                "threads"    : 24,
             },
             input=INPUT,
             output=OUTPUT,
