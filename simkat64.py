@@ -15,9 +15,11 @@ SYNTHESIS = "0.5"               # Observation time in hours
 DTIME = "4"                     # Integration time in seconds
 SKYMODEL = "point"              # Sky model name. The sky model file must placed in the input folder. "point" uses a point a 1Jy source at the phase/pointing centre (DIRECTION)
 CALFIELD = "no"
+AVG = "10"
 
 stimela.register_globals()
 
+AVG = int(AVG)
 GJONES = GJONES.lower() in "yebo yes true 1".split()
 MAKEMS = MAKEMS.lower() in "yebo yes true 1".split()
 SIMSKY = SIMSKY.lower() in "yebo yes true 1".split()
@@ -45,9 +47,10 @@ else:
 
 
 BW = 856e6 # in Hz
+
 mode = {
-    "4k"    : dict(dfreq=BW/4096.0, nchan=4096, im_nchan=16),
-    "32k"   : dict(dfreq=BW/32768.0, nchan=32768, im_nchan=16),
+    "4k"    : dict(dfreq=BW/4096.0 * AVG, nchan=4096 / AVG, im_nchan=4),
+    "32k"   : dict(dfreq=BW/32768.0 * AVG, nchan=32768 / AVG, im_nchan=4),
     "test"  : dict(dfreq=2e6, nchan=8, im_nchan=4),
 }
 
@@ -110,7 +113,7 @@ for field,skymodel in enumerate(SKYMODEL):
                 "auto-mask"         : 20,
                 "auto-threshold"    : 0.5,
                 "channelsout"       : mode[MODE]["im_nchan"],
-                "fit-spectral-pol"  : 4,
+                "fit-spectral-pol"  : 1,
                 "joinchannels"      : True,
             },
             input=INPUT,
